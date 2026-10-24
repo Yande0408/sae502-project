@@ -1,0 +1,54 @@
+t@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir l'inventaire Ansible du projet
+nano inventory/hosts.ini 
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir le premier playbook
+nano playbooks/prepare-infrastructure.yml
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Exécuter le premier playbook
+ansible-playbook -i inventory/hosts.ini playbooks/prepare-infrastructure.yml 
+
+PLAY [Préparer l'infrastructure Docker] **********************************************************************************************************************
+
+TASK [Vérifier que le moteur Docker est accessible] **********************************************************************************************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [Afficher la version du moteur Docker] ******************************************************************************************************************
+ok: [localhost] => {
+    "msg": "Docker accessible - version 29.1.3"
+}
+
+TASK [Créer le réseau Docker du projet] **********************************************************************************************************************
+changed: [localhost]
+
+PLAY RECAP ***************************************************************************************************************************************************
+localhost                  : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Vérifier que le réseau Docker existe
+docker network ls
+NETWORK ID     NAME         DRIVER    SCOPE
+aabc4dd75219   bridge       bridge    local
+25cb1da72add   host         host      local
+baeac32b079b   none         null      local
+1e08fb604e32   rt_default   bridge    local
+49f0d1fc3c5f   sae502       bridge    local
+b7956bdb82fa   sae502_net   bridge    local
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Relancer le playbook pour vérifier l'idempotence
+ansible-playbook -i inventory/hosts.ini playbooks/prepare-infrastructure.yml
+
+PLAY [Préparer l'infrastructure Docker] **********************************************************************************************************************
+
+TASK [Vérifier que le moteur Docker est accessible] **********************************************************************************************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [Afficher la version du moteur Docker] ******************************************************************************************************************
+ok: [localhost] => {
+    "msg": "Docker accessible - version 29.1.3"
+}
+
+TASK [Créer le réseau Docker du projet] **********************************************************************************************************************
+ok: [localhost]
+
+PLAY RECAP ***************************************************************************************************************************************************
+localhost                  : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ 

@@ -1,0 +1,17 @@
+---
+- name: Préparer l'infrastructure Docker
+  hosts: manager
+  gather_facts: false
+
+  tasks:
+    - name: Vérifier que le moteur Docker est accessible
+      community.docker.docker_host_info:
+      register: docker_info
+
+    - name: Afficher la version du moteur Docker
+      ansible.builtin.debug:
+        msg: "Docker accessible - version {{ docker_info.host_info.ServerVersion }}"
+
+    - name: Créer le réseau Docker du projet
+      community.docker.docker_network:
+        name: sae502_net
