@@ -1,0 +1,16 @@
+---
+- name: Déployer l'application Flask
+  hosts: manager
+  gather_facts: false
+
+  # Charger les variables sensibles chiffrées
+  vars_files:
+    - ../group_vars/all/vault.yml
+
+  # Appeler le rôle webapp
+  roles:
+    - webapp
+
+# deploy-web.yml est le playbook qui déclenche le déploiement de l’application.
+#Il charge les variables sécurisées du Vault puis appelle le rôle webapp,
+#qui construit l’image Flask et démarre le conteneur.

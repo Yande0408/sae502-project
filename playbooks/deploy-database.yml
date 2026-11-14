@@ -1,0 +1,15 @@
+---
+- name: Déployer la base de données MariaDB
+  # Le playbook cible le groupe manager défini dans l'inventaire
+  hosts: manager
+
+  # Nous n'avons pas besoin de récupérer les Facts système ici
+  gather_facts: false
+
+  # Charger les variables sensibles chiffrées avec Ansible Vault
+  vars_files:
+    - ../group_vars/all/vault.yml
+
+  # Appeler le rôle database
+  roles:
+    - database

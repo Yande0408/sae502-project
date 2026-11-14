@@ -1,0 +1,30 @@
+---
+# Créer le volume persistant utilisé par MariaDB
+- name: Créer le volume Docker pour MariaDB
+  community.docker.docker_volume:
+    name: sae502_mariadb_data
+  #   La première ligne  crée un volume Docker persistant.
+  #Parce que si je supprimes db-server, je ne veux pas perdre les tâches enregistrées dans MariaDB.
+ # ce volune sert conserver les données de MariaDB dans sae502 mairadb data
+# Déployer le conteneur MariaDB
+- name: Déployer le conteneur MariaDB
+  community.docker.docker_container: # ici il crée et démarre le conteneur MariaDB avec le nom db-server et l'image mariadb:11.4 
+    name: db-server
+    image: mariadb:11.4
+    state: started
+    restart_policy: unless-stopped
+
+    # Variables nécessaires à l'initialisation de MariaDB injection des Paramètres de la base avecles valeurs qui viennent du fichier vault.yml
+    env:
+      MARIADB_ROOT_PASSWORD: "{{ vault_mariadb_root_password }}"
+      MARIADB_DATABASE: "{{ vault_mariadb_database }}"
+      MARIADB_USER: "{{ vault_mariadb_user }}"
+      MARIADB_PASSWORD: "{{ vault_mariadb_password }}"
+
+    # Volume persistant de la base ( relier le volume Docker au dossier interne utilisé par MariaDB pour les données
+    volumes:
+      - sae502_mariadb_data:/var/lib/mysql
+
+    # Connexion au réseau privé du projet ( afin Ansible  connecte le conteneur db-server avec le réseau 
+    networks:
+      - name: sae502_net

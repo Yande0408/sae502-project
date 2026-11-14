@@ -1,4 +1,4 @@
-t@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir l'inventaire Ansible du projet
+ t@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir l'inventaire Ansible du projet
 nano inventory/hosts.ini 
 rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir le premier playbook
 nano playbooks/prepare-infrastructure.yml
@@ -74,3 +74,268 @@ rt@rt-VMware-Virtual-Platform:~/sae502-project$
 
 
 Lors de la première exécution, Ansible a créé le réseau Docker, donc j’avais changed=1. Lors de la seconde exécution, le réseau existait déjà et Ansible n’a effectué aucune modification, donc j’obtiens changed=0. Cela démontre l'idempotence de ce premier playbook  
+
+
+
+DEPLOIMENT DE MARIADB PAR ANSIBLE 
+
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Déployer MariaDB
+ansible-playbook playbooks/deploy-database.yml --ask-vault-pass
+Vault password:
+
+PLAY [Déployer la base de données MariaDB] ****************************************
+
+TASK [database : Créer le volume Docker pour MariaDB] *****************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+changed: [localhost]
+
+TASK [database : Déployer le conteneur MariaDB] ***********************************
+changed: [localhost]
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=2    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$
+
+
+J’ai créé un playbook deploy-database.yml qui appelle le rôle database. Ansible a créé le volume persistant puis lancé le conteneur MariaDB 11.4 avec les identifiants récupérés depuis Ansible Vault.
+Lors de la première exécution, les deux tâches ont été marquées changed car les ressources n’existaient pas encore.
+
+je vais Verifier maintenant que tout exeiste bien coté Docker 
+
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS         PORTS                                                                                                NAMES
+7477eeca48e0   mariadb:11.4                    "docker-entrypoint.s…"   8 minutes ago   Up 8 minutes   3306/tcp                                                                                             db-server
+2bb2c5a72660   portainer/portainer-ce:latest   "/portainer"             6 months ago    Up 2 days      0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp, 0.0.0.0:9443->9443/tcp, [::]:9443->9443/tcp, 9000/tcp   portainer
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ docker volume ls | grep sae502_mariadb_data
+local     sae502_mariadb_data
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Vérifier que db-server est bien connecté au réseau du projet
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ docker network inspect sae502_net
+[
+    {
+        "Name": "sae502_net",
+        "Id": "b7956bdb82fada9757a229d4941fc14cde3622b70704482dc9bee5b73fee5e06",
+        "Created": "2026-10-24T14:00:36.302772905+02:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.19.0.0/16",
+                    "IPRange": "",
+                    "Gateway": "172.19.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Options": {},
+        "Labels": {},
+        "Containers": {
+            "7477eeca48e0db651734b0f6251c62a1810a94c9fd17b3382421bdf85eafa015": {
+                "Name": "db-server",
+                "EndpointID": "4783609cbb8a2397376fd24dc30c506ce9124f7fb2182df37c6a2e52c9179d1c",
+                "MacAddress": "4a:30:14:1d:41:9e",
+                "IPv4Address": "172.19.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Status": {
+            "IPAM": {
+                "Subnets": {
+                    "172.19.0.0/16": {
+                        "IPsInUse": 4,
+                        "DynamicIPsAvailable": 65532
+                    }
+                }
+            }
+        }
+    }
+]
+rt@rt-VMware-Virtual-Platform:~/sae502-project$
+
+Le conteneur db-server est crée et connecté dans le réseau de mon projet  le volume persistant existe et 
+
+je vais relancer le playbook pour une deuxième fois pour verifier que le déploiment de Mariadb est aussi Idempotent
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Relancer le playbook pour vérifier l'idempotence
+ansible-playbook playbooks/deploy-database.yml --ask-vault-pass
+Vault password:
+
+PLAY [Déployer la base de données MariaDB] ****************************************
+
+TASK [database : Créer le volume Docker pour MariaDB] *****************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [database : Déployer le conteneur MariaDB] ***********************************
+ok: [localhost]
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$
+
+J’ai relancé deploy-database.yml. La seconde exécution retourne changed=0, ce qui montre que le rôle database est idempotent : 
+Ansible ne recrée ni le volume ni le conteneur MariaDB s’ils existent déjà correctement.
+
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir le playbook de tests
+nano playbooks/test-infrastructure.yml
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Lancer les tests avec le mot de passe Vault
+ansible-playbook playbooks/test-infrastructure.yml --ask-vault-pass
+Vault password:
+
+PLAY [Tester l'infrastructure] ****************************************************
+
+TASK [Vérifier l'état du conteneur MariaDB] ***************************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [Afficher l'état de MariaDB] *************************************************
+ok: [localhost] => {
+    "msg": "db-server est démarré : True"
+}
+
+TASK [Vérifier la présence de la base tasksdb] ************************************
+changed: [localhost]
+
+TASK [Confirmer le fonctionnement de MariaDB] *************************************
+ok: [localhost] => {
+    "msg": "MariaDB répond correctement et la commande SQL a été exécutée."
+}
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=4    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+  J’ai ajouté un playbook de test qui vérifie que le conteneur MariaDB est actif et qu’une commande SQL peut être exécutée. Les identifiants sont chargés depuis Ansible Vault et la tâche sensible est masquée avec no_log: true.
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ nano playbooks/test-infrastructure.yml
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Relancer le playbook de tests
+ansible-playbook playbooks/test-infrastructure.yml --ask-vault-pass
+Vault password:
+
+PLAY [Tester l'infrastructure] *************************************************
+
+TASK [Vérifier l'état du conteneur MariaDB] ************************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [Afficher l'état de MariaDB] **********************************************
+ok: [localhost] => {
+    "msg": "db-server est démarré : True"
+}
+
+TASK [Vérifier la présence de la base tasksdb] *********************************
+ok: [localhost]
+
+TASK [Confirmer le fonctionnement de MariaDB] **********************************
+ok: [localhost] => {
+    "msg": "MariaDB répond correctement et la commande SQL a été exécutée."
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=4    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ passer à Flask.
+
+
+
+Mon playbook de tests ne vérifie pas seulement que le conteneur existe. Il vérifie aussi que MariaDB répond à une requête et que la base attendue est réellement présente. Comme il s’agit uniquement de contrôles, j’utilise changed_when: false pour que les tests ne soient pas considérés comme des modifications.
+
+
+creation de et deploiment l'aplication Flask
+ rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Déployer l'application Flask
+ansible-playbook playbooks/deploy-web.yml --ask-vault-pass
+Vault password:
+
+PLAY [Déployer l'application Flask] ********************************************
+
+TASK [webapp : Construire l'image de l'application Flask] **********************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+[ERROR]: Task failed: Module failed: Requested build path ./app could not be found or you do not have access.
+Origin: /home/rt/sae502-project/roles/webapp/tasks/main.yml:3:3
+
+1 ---
+2 # Construire l'image Docker de l'application Flask
+3 - name: Construire l'image de l'application Flask
+    ^ column 3
+
+fatal: [localhost]: FAILED! => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.14"}, "changed": false, "msg": "Requested build path ./app could not be found or you do not have access."}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Ouvrir le rôle webapp
+nano roles/webapp/tasks/main.y
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ ansible-playbook playbooks/deploy-web.yml --ask-vault-pass
+Vault password:
+
+PLAY [Déployer l'application Flask] ***********************************************
+
+TASK [webapp : Construire l'image de l'application Flask] *************************
+
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+changed: [localhost]
+
+TASK [webapp : Déployer le conteneur web-app] *************************************
+changed: [localhost]
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=2    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$
+  Le premier essai de déploiement Flask a échoué parce que le chemin relatif ./app ne pointait pas vers le bon dossier. J’ai utilisé la variable Ansible playbook_dir pour construire un chemin fiable vers le dossier app du projet.
+
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Afficher les en-têtes HTTP et le contenu de la page principale
+curl -i http://127.0.0.1:8080/
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.9 Python/3.14.10
+Date: Sat, 14 Nov 2026 14:00:07 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 38
+Connection: close
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Afficher les en-têtes HTTP et le contenu du test MariaDBtes HTTP et le contenu du test MariaDB
+curl -i http://127.0.0.1:8080/db-test
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.9 Python/3.14.10
+Date: Sat, 14 Nov 2026 14:00:21 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 20
+Connection: close
+
+Connexion MariaDB OK
+
+Le conteneur Flask est accessible sur le port 8080. La route principale répond en HTTP 200 et la route /db-test répond également en HTTP 200 avec le message Connexion MariaDB OK, ce qui confirme la communication entre Flask et MariaDB via le réseau Docker.
+
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$ # Relancer le déploiement Flask                                # Relancer le déploiement Flask
+ansible-playbook playbooks/deploy-web.yml --ask-vault-pass
+Vault password:
+
+PLAY [Déployer l'application Flask] ***********************************************
+
+TASK [webapp : Construire l'image de l'application Flask] *************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [webapp : Déployer le conteneur web-app] *************************************
+ok: [localhost]
+
+PLAY RECAP ************************************************************************
+localhost                  : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+rt@rt-VMware-Virtual-Platform:~/sae502-project$

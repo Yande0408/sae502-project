@@ -1,0 +1,5 @@
+---
+- import_playbook: prepare-infrastructure.yml
+- import_playbook: deploy-database.yml
+- import_playbook: deploy-web.yml
+- import_playbook: test-infrastructure.yml

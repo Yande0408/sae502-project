@@ -1,0 +1,7 @@
+Flask==3.1.1
+PyMySQL==1.1.1
+
+#Flask = framework web de notre application ;
+#PyMySQL = bibliothèque Python permettant à Flask de communiquer avec MariaDB.
+#requirements.txt définit les bibliothèques Python nécessaires à l’application et fixe 
+#leurs versions afin que le conteneur puisse être reconstruit de manière reproductible.

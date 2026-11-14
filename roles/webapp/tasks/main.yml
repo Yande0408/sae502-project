@@ -1,0 +1,36 @@
+---
+# Construire l'image Docker de l'application Flask
+- name: Construire l'image de l'application Flask
+  community.docker.docker_image:
+# demander à Ansible de faire construire une image Docker à partir de mon dossier app (avec des fichier Dockerfile app.py requirements.txt)
+    name: sae502-webapp
+    source: build
+    build:
+      path: "{{ playbook_dir }}/../app"
+
+# Déployer le conteneur Flask
+- name: Déployer le conteneur web-app
+  community.docker.docker_container:
+    name: web-app
+    image: sae502-webapp
+    state: started
+    restart_policy: unless-stopped
+
+    # Variables utilisées par Flask pour se connecter à MariaDB
+    env:
+      DB_HOST: "db-server"
+      DB_NAME: "{{ vault_mariadb_database }}"
+      DB_USER: "{{ vault_mariadb_user }}"
+      DB_PASSWORD: "{{ vault_mariadb_password }}"
+
+    # Connecter Flask au réseau Docker du projet
+    networks:
+      - name: sae502_net
+
+    # Publier le port 5000 du conteneur sur le port 8080 de la VM
+    published_ports:
+      - "8080:5000"
+ # Le rôle webapp demande à Ansible de construire l’image Flask à partir du Dockerfile,
+ #puis de démarrer le conteneur web-app. 
+#Les paramètres de connexion MariaDB sont injectés depuis le Vault, le conteneur rejoint sae502_net
+#et le port 5000 est publié sur le port 8080 de la VM. »

@@ -1,0 +1,41 @@
+---
+- name: Tester l'infrastructure
+  hosts: manager
+  gather_facts: false
+
+  vars_files:
+    - ../group_vars/all/vault.yml
+
+  tasks:
+    # Vérifier que le conteneur MariaDB est bien démarré
+    - name: Vérifier l'état du conteneur MariaDB
+      community.docker.docker_container_info:
+        name: db-server
+      register: db_info
+
+    # Afficher l'état du conteneur
+    - name: Afficher l'état de MariaDB
+      ansible.builtin.debug:
+        msg: "db-server est démarré : {{ db_info.container.State.Running }}"
+
+    # Vérifier que MariaDB répond et que la base existe
+    - name: Vérifier la présence de la base tasksdb
+      community.docker.docker_container_exec:
+        container: db-server
+        command: >
+          mariadb
+          -u{{ vault_mariadb_user }}
+          -p{{ vault_mariadb_password }}
+          -e "SHOW DATABASES;"
+      register: db_test
+      changed_when: false
+      failed_when: vault_mariadb_database not in db_test.stdout
+      no_log: true
+
+    # Afficher seulement un message simple de validation
+    - name: Confirmer le fonctionnement de MariaDB
+      ansible.builtin.debug:
+        msg: "MariaDB répond correctement et la commande SQL a été exécutée."
+   # Ce playbook fait trois choses :
+   # il vérifie que le conteneur db-server tourne ;
+   # il confirme que MariaDB répond.
