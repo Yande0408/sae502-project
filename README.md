@@ -73,12 +73,13 @@ VM Ubuntu
 Le réseau `sae502_net` permet la communication entre l'application Flask et MariaDB.
 
 Le volume `sae502_mariadb_data` permet de conserver les données MariaDB indépendamment du cycle de vie du conteneur.
-
+   la commande du  déploiement principal de l'infrastructure est : ansible-playbook playbooks/site.yml --ask-vault-pass
 ---
 
 ## 3. Versions utilisées
 
-Environnement hôte :
+Environnement hôte :# Lancer le déploiement principal de l'infrastructure
+ansible-playbook playbooks/site.yml --ask-vault-pass
 
 - Ubuntu : 26.04.1 LTS
 - Python : 3.14.4
@@ -93,6 +94,18 @@ Environnement applicatif :
 - PyMySQL : 1.1.1
 - image Python de l'application : `python:3.14-slim`
 - image MariaDB : `mariadb:11.4`
+
+## 12. Sauvegarde / restauration
+
+Cette partie n'est pas encore implémentée.
+
+Le projet prévoit :
+
+- un playbook de sauvegarde de MariaDB ;
+- un playbook de restauration ;
+- la conservation des 7 sauvegardes les plus récentes ;
+- une restauration déclenchée volontairement et non pendant le déploiement normal.
+
 
 ---
 
